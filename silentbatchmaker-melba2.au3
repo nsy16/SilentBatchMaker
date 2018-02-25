@@ -40,7 +40,7 @@ Global $sTestRow
 AdlibRegister("MyAdLibFunc")
 
 ; Main GUI header
-$sTitle = "Silent Batch Maker 1.3.2 @ 21/02/2018"
+$sTitle = "Silent Batch Maker 1.3.3 @ 26/02/2018"
 $hGUI = GUICreate($sTitle , 850, 550, -1, -1)
 $idBrowse = GUICtrlCreateButton("Browse", 9, 15, 100, 30)
 $idSave = GUICtrlCreateButton("Save", 622, 15, 100, 30)
@@ -267,26 +267,24 @@ Func Save($saveDir)    ; take all the exe files and switches and generate batch 
 
 			Select
 				Case $regDV <> ""
+					$msg &= 'set _regDN=' & $regDN & @CRLF
 					$msg &= 'set _regDV=' & $regDV & @CRLF
 					$msg &= '' & @CRLF
 					$msg &= ':: query registry for DisplayVersion 64bit and 32bit uninstall locations' & @CRLF
-					$msg &= 'for /f "tokens=3" %%a in (''reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayVersion" 2^>nul'') do set _reg_version=%%a' & @CRLF
-					$msg &= 'if "%_reg_version%" geq "%_regDV%" goto :end' & @CRLF
-					$msg &= 'for /f "tokens=3" %%a in (''reg query "HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayVersion" 2^>nul'') do set _reg-wow64_version=%%a' & @CRLF
-					$msg &= 'if "%_reg-wow64_version%" geq "%_regDV%" goto :end' & @CRLF
+					$msg &= 'for /f "tokens=3" %%a in (''reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayVersion" 2^>nul'') do if "%%a" geq "%_regDV%" goto :eof' & @CRLF
+					$msg &= 'for /f "tokens=3" %%a in (''reg query "HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayVersion" 2^>nul'') do if "%%a" geq "%_regDV%" goto :eof' & @CRLF
 					$msg &= '' & @CRLF
 				Case $regDN <> ""
 					$msg &= 'set _regDN=' & $regDN & @CRLF
 					$msg &= '' & @CRLF
 					$msg &= ':: query registry for DisplayName 64bit and 32bit uninstall locations' & @CRLF
-					$msg &= 'for /f "tokens=3" %%a in (''reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayName" 2^>nul'') do set _reg_name=%%a' & @CRLF
-					$msg &= 'if "%_reg_name%" geq "%_regDN%" goto :end' & @CRLF
-					$msg &= 'for /f "tokens=3" %%a in (''reg query "HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayName" 2^>nul'') do set _reg-wow64_name=%%a' & @CRLF
-					$msg &= 'if "%_reg-wow64_name%" geq "%_regDN%" goto :end' & @CRLF
+					$msg &= 'for /f "usebackq tokens=1-2*" %%a in (`reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayName" 2^>nul`) do if "%%c" equ "%_regDN%" goto :eof' & @CRLF
+					$msg &= 'for /f "usebackq tokens=1-2*" %%a in (`reg query "HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayName" 2^>nul`) do if "%%c" equ "%_regDN%" goto :eof' & @CRLF
 					$msg &= '' & @CRLF
 			EndSelect
 
 			$msg &= ':: install software' & @CRLF
+			$msg &= 'echo Installing %_regDN%' & @CRLF
 			$msg &= 'start /wait "" "%_fPath%" %_swtch%' & @CRLF
 			$msg &= '' & @CRLF
 			$msg &= ':end' & @CRLF
@@ -323,29 +321,25 @@ Func Save($saveDir)    ; take all the exe files and switches and generate batch 
 					$msg &= 'set _regDN=' & $regDN & @CRLF
 					$msg &= '' & @CRLF
 					$msg &= ':: query registry for DisplayName 64bit and 32bit uninstall locations' & @CRLF
-					$msg &= 'for /f "tokens=3" %%a in (''reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayName" 2^>nul'') do set _reg_name=%%a' & @CRLF
-					$msg &= 'if "%_reg_name%" geq "%_regDN%" goto :end' & @CRLF
-					$msg &= 'for /f "tokens=3" %%a in (''reg query "HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayName" 2^>nul'') do set _reg-wow64_name=%%a' & @CRLF
-					$msg &= 'if "%_reg-wow64_name%" geq "%_regDN%" goto :end' & @CRLF
+					$msg &= 'for /f "usebackq tokens=1-2*" %%a in (`reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayName" 2^>nul`) do if "%%c" equ "%_regDN%" goto :eof' & @CRLF
+					$msg &= 'for /f "usebackq tokens=1-2*" %%a in (`reg query "HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayName" 2^>nul`) do if "%%c" equ "%_regDN%" goto :eof' & @CRLF
 					$msg &= '' & @CRLF
 					$msg &= ':: install software' & @CRLF
 					$msg &= 'echo Installing %_regDN%' & @CRLF
 
-				Case $regDN = "" And $regDV <> ""
-					$msg &= 'set _fPath=%~dp0' & $fPath & @CRLF
-					$msg &= 'set _swtch=' & $swtch & @CRLF
-					$msg &= 'set _regKy=' & $regKy & @CRLF
-					$msg &= 'set _regDN=' & $regDN & @CRLF
-					$msg &= 'set _regDV=' & $regDV & @CRLF
-					$msg &= '' & @CRLF
-					$msg &= ':: query registry for DisplayVersion 64bit and 32bit uninstall locations' & @CRLF
-					$msg &= 'for /f "tokens=3" %%a in (''reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayVersion" 2^>nul'') do set _reg_version=%%a' & @CRLF
-					$msg &= 'if "%_reg_version%" geq "%_regDV%" goto :end' & @CRLF
-					$msg &= 'for /f "tokens=3" %%a in (''reg query "HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayVersion" 2^>nul'') do set _reg-wow64_version=%%a' & @CRLF
-					$msg &= 'if "%_reg-wow64_version%" geq "%_regDV%" goto :end' & @CRLF
-					$msg &= '' & @CRLF
-					$msg &= ':: install software' & @CRLF
-					$msg &= 'echo Installing ' & $parentDir & ' %_regDV%' & @CRLF
+;~ 				Case $regDN = "" And $regDV <> "" ; Display Name will always be set - update this section if a case is found
+;~ 					$msg &= 'set _fPath=%~dp0' & $fPath & @CRLF
+;~ 					$msg &= 'set _swtch=' & $swtch & @CRLF
+;~ 					$msg &= 'set _regKy=' & $regKy & @CRLF
+;~ 					$msg &= 'set _regDN=' & $regDN & @CRLF
+;~ 					$msg &= 'set _regDV=' & $regDV & @CRLF
+;~ 					$msg &= '' & @CRLF
+;~ 					$msg &= ':: query registry for DisplayVersion 64bit and 32bit uninstall locations' & @CRLF
+;~ 					$msg &= 'for /f "tokens=3" %%a in (''reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayVersion" 2^>nul'') do if "%%a" geq "%_regDV%" goto :eof' & @CRLF
+;~ 					$msg &= 'for /f "tokens=3" %%a in (''reg query "HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayVersion" 2^>nul'') do if "%%a" geq "%_regDV%" goto :eof' & @CRLF
+;~ 					$msg &= '' & @CRLF
+;~ 					$msg &= ':: install software' & @CRLF
+;~ 					$msg &= 'echo Installing ' & $parentDir & ' %_regDV%' & @CRLF
 
 				Case $regDN <> "" And $regDV <> ""
 					$msg &= 'set _fPath=%~dp0' & $fPath & @CRLF
@@ -355,10 +349,8 @@ Func Save($saveDir)    ; take all the exe files and switches and generate batch 
 					$msg &= 'set _regDV=' & $regDV & @CRLF
 					$msg &= '' & @CRLF
 					$msg &= ':: query registry for DisplayVersion 64bit and 32bit uninstall locations' & @CRLF
-					$msg &= 'for /f "tokens=3" %%a in (''reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayVersion" 2^>nul'') do set _reg_version=%%a' & @CRLF
-					$msg &= 'if "%_reg_version%" geq "%_regDV%" goto :end' & @CRLF
-					$msg &= 'for /f "tokens=3" %%a in (''reg query "HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayVersion" 2^>nul'') do set _reg-wow64_version=%%a' & @CRLF
-					$msg &= 'if "%_reg-wow64_version%" geq "%_regDV%" goto :end' & @CRLF
+					$msg &= 'for /f "tokens=3" %%a in (''reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayVersion" 2^>nul'') do if "%%a" geq "%_regDV%" goto :eof' & @CRLF
+					$msg &= 'for /f "tokens=3" %%a in (''reg query "HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayVersion" 2^>nul'') do if "%%a" geq "%_regDV%" goto :eof' & @CRLF
 					$msg &= '' & @CRLF
 					$msg &= ':: install software' & @CRLF
 					$msg &= 'echo Installing %_regDN% %_regDV%' & @CRLF
@@ -447,34 +439,47 @@ Func Save($saveDir)    ; take all the exe files and switches and generate batch 
 		$msg &= '' & @CRLF
 		$msg &= '' & @CRLF
 		$msg &= ':sub_install <index>' & @CRLF
-		$msg &= '  :: set variables' & @CRLF
 		$msg &= '  set _index=%~1' & @CRLF
 		$msg &= '  call set _fPath=%%_fPath_[%_index%]%%%' & @CRLF
 		$msg &= '  if not defined _fPath goto :eof' & @CRLF
 		$msg &= '  call set _swtch=%%_swtch_[%_index%]%%%' & @CRLF
 		$msg &= '  call set _regKy=%%_regKy_[%_index%]%%%' & @CRLF
 		$msg &= '  call set _regDN=%%_regDN_[%_index%]%%%' & @CRLF
-		If $regDNCount > 1 Then
+		If $regDVCount = 0 Then
 			$msg &= '' & @CRLF
-			$msg &= '  echo Installing %_regDN%' & @CRLF
 			$msg &= '  :: query registry for DisplayName 64bit and 32bit uninstall locations' & @CRLF
-			$msg &= '  for /f "tokens=3" %%a in (''reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayName" 2^>nul'') do set _reg_name=%%a' & @CRLF
-			$msg &= '  if "%_reg_name%" geq "%_regDN%" goto :eof' & @CRLF
-			$msg &= '  for /f "tokens=3" %%a in (''reg query "HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayName" 2^>nul'') do set _reg-wow64_name=%%a' & @CRLF
-			$msg &= '  if "%_reg-wow64_name%" geq "%_regDN%" goto :eof' & @CRLF
+			$msg &= '  for /f "usebackq tokens=1-2*" %%a in (`reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayName" 2^>nul`) do if "%%c" equ "%_regDN%" goto :eof' & @CRLF
+			$msg &= '  for /f "usebackq tokens=1-2*" %%a in (`reg query "HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayName" 2^>nul`) do if "%%c" equ "%_regDN%" goto :eof' & @CRLF
+			$msg &= '' & @CRLF
+			$msg &= '  :: install software with switch' & @CRLF
+			$msg &= '  echo Installing %_regDN%' & @CRLF
 		EndIf
-		If $regDVCount > 1 Then
+		If $regDNCount = 0 Then
 			$msg &= '  call set _regDV=%%_regDV_[%_index%]%%%' & @CRLF
 			$msg &= '' & @CRLF
-			$msg &= '  echo Installing %_regDN% %_regDV%' & @CRLF
 			$msg &= '  :: query registry for DisplayVersion 64bit and 32bit uninstall locations' & @CRLF
-			$msg &= '  for /f "tokens=3" %%a in (''reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayVersion" 2^>nul'') do set _reg_version=%%a' & @CRLF
-			$msg &= '  if "%_reg_version%" geq "%_regDV%" goto :eof' & @CRLF
-			$msg &= '  for /f "tokens=3" %%a in (''reg query "HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayVersion" 2^>nul'') do set _reg-wow64_version=%%a' & @CRLF
-			$msg &= '  if "%_reg-wow64_version%" geq "%_regDV%" goto :eof' & @CRLF
+			$msg &= '  for /f "tokens=3" %%a in (''reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayVersion" 2^>nul'') do if "%%a" geq "%_regDV%" goto :eof' & @CRLF
+			$msg &= '  for /f "tokens=3" %%a in (''reg query "HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayVersion" 2^>nul'') do if "%%a" geq "%_regDV%" goto :eof' & @CRLF
+			$msg &= '' & @CRLF
+			$msg &= '  :: install software with switch' & @CRLF
+			$msg &= '  echo Installing %_regDN% %_regDV%' & @CRLF
 		EndIf
-		$msg &= '' & @CRLF
-		$msg &= '  :: install software with switch' & @CRLF
+
+		If $regDNCount > 0 And $regDNCount > 0 Then
+			$msg &= '  call set _regDV=%%_regDV_[%_index%]%%%' & @CRLF
+			$msg &= '' & @CRLF
+			$msg &= '  :: multi query registry for 64bit and 32bit uninstall locations' & @CRLF
+			$msg &= '  :: display version' & @CRLF
+			$msg &= '  if defined _regDV for /f "tokens=3" %%a in (''reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayVersion" 2^>nul'') do if "%%a" geq "%_regDV%" goto :eof' & @CRLF
+			$msg &= '  if defined _regDV for /f "tokens=3" %%a in (''reg query "HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayVersion" 2^>nul'') do if "%%a" geq "%_regDV%" goto :eof' & @CRLF
+			$msg &= '  :: display name' & @CRLF
+			$msg &= '  if not defined _regDV for /f "usebackq tokens=1-2*" %%a in (`reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayName" 2^>nul`) do if "%%c" equ "%_regDN%" goto :eof' & @CRLF
+			$msg &= '  if not defined _regDV for /f "usebackq tokens=1-2*" %%a in (`reg query "HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\%_regKy%" /v "DisplayName" 2^>nul`) do if "%%c" equ "%_regDN%" goto :eof' & @CRLF
+			$msg &= '' & @CRLF
+			$msg &= '  :: install software with switch' & @CRLF
+			$msg &= '  echo Installing %_regDN%' & @CRLF
+		EndIf
+
 		$msg &= '  start /wait "" "%_fPath%" %_swtch%' & @CRLF
 		$msg &= '  goto :eof' & @CRLF
 		$msg &= '' & @CRLF
@@ -551,16 +556,20 @@ Func Load($profile)
 
 		If StringInStr($line, "set _regDN") Then
 			$a = StringRegExpReplace($line, '(^.+?=)', "") ; Erase from beginning, to first "="
-			ConsoleWrite("_regDN: " & $a & @CRLF)
-			$regDN = $a
-			$aLoadValues[$count][3] = $regDN
+			If $a <> "" Then
+				ConsoleWrite("_regDN: " & $a & @CRLF)
+				$regDN = $a
+				$aLoadValues[$count][3] = $regDN
+			EndIf
 		EndIf
 
 		If StringInStr($line, "set _regDV") Then
 			$a = StringRegExpReplace($line, '(^.+?=)', "") ; Erase from beginning, to first "="
-			ConsoleWrite("_regDV: " & $a & @CRLF)
-			$regDV = $a
-			$aLoadValues[$count][4] = $regDV
+			If $a <> "" Then
+				ConsoleWrite("_regDV: " & $a & @CRLF)
+				$regDV = $a
+				$aLoadValues[$count][4] = $regDV
+			EndIf
 		EndIf
 
 	Wend
@@ -672,8 +681,8 @@ Func CreateRows(ByRef $aFiles)
             GUISetIcon(-1)
         $aRow[$i][5] = GUICtrlCreateCombo("", 527, $x, 107, 21)
             If GetFileExtension($aFiles[$i]) == ".exe" Then GUICtrlSetData(-1, '/s|/S|/q|/s /v"/passive"|/s /v"/passive /norestart"|/S/v/qn /V"/qb"|/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-|/silent|/silent /accepteula|/sAll|-silent|-silent -eulaAccepted|/?', '/s')
-            If GetFileExtension($aFiles[$i]) == ".msi" Then GUICtrlSetData(-1, '/qb|/passive|/?', '/passive')
-            If GetFileExtension($aFiles[$i]) == ".mst" Then GUICtrlSetData(-1, '/qb|/passive|/?', '/passive')
+            If GetFileExtension($aFiles[$i]) == ".msi" Then GUICtrlSetData(-1, '/qb|/passive|/passive ALLUSERS=1|/?', '/passive')
+            If GetFileExtension($aFiles[$i]) == ".mst" Then GUICtrlSetData(-1, '/qb|/passive|/passive ALLUSERS=1|/?', '/passive')
         ; Right column
         $aRow[$i][6] = GUICtrlCreateButton("Test", 634, $x, 55, 21)
         $aRow[$i][7] = GUICtrlCreateButton("Delete", 789, $x, 39, 21)
