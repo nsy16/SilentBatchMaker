@@ -5,18 +5,21 @@
 
 
 #cs
+    - TODO -
 	Add a open folder option to rows, to open folder directly
 	Add scroll bar
 	Add maximum depth option, should be 2 by default, means all exe + msi files under that folder appear as array in combobox
 	Add global switch changer for all, to change switch for all options, except locked
-
 	clicking on test has to save to a temporary file (why because automatic reboot)
-	Clicking on test has to AUTOMATICALLY PRESCAN REGISTRY AND LOOK FOR CHANGES in HKLM and HKLM64 UNINSTALL!!!
-
-	TODO -
 	Multiple regchanges need a dropdown or choice if found
-	Audacity and lame are different - not generating correct script
+    Load function should reorder rows
+	Deleting rows after loading should not erase the boxes
 
+	custom flag dir
+	more output options - eg vbs, ps1
+	installed directory scan and point at .exe flag
+
+	improve loading speed
 #ce
 
 #include <StaticConstants.au3>
