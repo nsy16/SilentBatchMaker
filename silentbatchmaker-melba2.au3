@@ -43,7 +43,7 @@ Global $sTestRow
 AdlibRegister("MyAdLibFunc")
 
 ; Main GUI header
-$sTitle = "Silent Batch Maker 1.3.3 @ 26/02/2018"
+$sTitle = "Silent Batch Maker 1.3.4 @ 27/02/2018"
 $hGUI = GUICreate($sTitle , 850, 550, -1, -1)
 $idBrowse = GUICtrlCreateButton("Browse", 9, 15, 100, 30)
 $idSave = GUICtrlCreateButton("Save", 622, 15, 100, 30)
@@ -52,10 +52,11 @@ GUICtrlSetState(-1,$GUI_DISABLE)
 $lbFolder = GUICtrlCreateLabel("Browse to the install folder", 120, 15, 487, 28, $SS_CENTERIMAGE)
 
 Global $OPENDIR = @TempDir
-Global $pFname[3]
+Global $pFname[4]
 $pFname[0] = "install.cmd"
 $pFname[1] = "install-batch-regcheck-full.cmd"
 $pFname[2] = "install-batch-regcheck-multi-full.cmd"
+; search for *.vbs file - may require a manuall check
 
 
 ;GUICtrlCreateRadio("Lock", 694, 60, 42, 21)
@@ -84,9 +85,10 @@ While True
                 $aFiles = _FileListToArrayRec($sDir, '*.exe;*.msi;*.msp', $FLTAR_FILES, $FLTAR_RECUR, $FLTAR_SORT, $FLTAR_RELPATH)
                 If Not @error Then
                     _CreateControls()
-					For $i = 0 To UBound($pFname) - 1
-						If FileExists($sDir & '\' & $pFname[$i]) Then GUICtrlSetState($idLoad,$GUI_ENABLE)
-					Next
+					;For $i = 0 To UBound($pFname) - 1
+					;	If FileExists($sDir & '\' & $pFname[$i]) Then GUICtrlSetState($idLoad,$GUI_ENABLE)
+					;Next
+					GUICtrlSetState($idLoad,$GUI_ENABLE)
                 EndIf
             ;EndIf
         Case $nMsg = $idSave
@@ -100,14 +102,23 @@ While True
                 MsgBox(0, "Error", "Nothing to save!")
             EndIf
 		Case $nMsg = $idLoad
-			For $i = 0 To UBound($pFname) - 1
-				If FileExists($sDir & '\' & $pFname[$i]) Then $profile = $sDir & '\' & $pFname[$i]
-			Next
-			If IsDeclared("profile") Then
-				Load($profile)
+			;For $i = 0 To UBound($pFname) - 1
+			;	If FileExists($sDir & '\' & $pFname[$i]) Then $profile = $sDir & '\' & $pFname[$i]
+			;Next
+			;If IsDeclared("profile") Then
+			;	Load($profile)
+			;Else
+            ;    MsgBox(0, "Error", "No profile was found!")
+            ;EndIf
+			Local $profile = FileOpenDialog("Choose a script to load", $OPENDIR, "install scripts (*.cmd;*.vbs)")
+			If @error Then
+				;MsgBox(4096,"","Select cancelled.")
 			Else
-                MsgBox(0, "Error", "No profile was found!")
-            EndIf
+				Load($profile)
+			EndIf
+
+
+
 
         Case Else
             For $i = 1 To UBound($aRow) - 1
@@ -368,7 +379,7 @@ Func Save($saveDir)    ; take all the exe files and switches and generate batch 
 
 		;MsgBox(0, 'Debug', $msg)
 
-		Local $File = FileOpen($saveDir & '\' & $pFname[0], 2) ;Use UTF8, overwrite existing data, create directory
+		Local $File = FileOpen($saveDir & '\install-single-regcheck.cmd', 2) ;Use UTF8, overwrite existing data, create directory
 		FileWrite($File, $msg)
 		FileClose($File)
 
@@ -517,7 +528,10 @@ Func Load($profile)
 		If @error = -1 Then
 			ExitLoop
 		EndIf
-		;ConsoleWrite($line & @CRLF)
+
+		;ConsoleWrite("$line - " & $line & @CRLF)
+		;ConsoleWrite("regmatch - " & StringRegExp($line, "aInstall\(\d,0\)", $STR_REGEXPMATCH) & @CRLF)
+		;If StringRegExp($line, "aInstall\(\d,0\)", $STR_REGEXPMATCH) = True Then ConsoleWrite("$line - " & $line & @CRLF)
 
 		; read all values, in correct order
 		If StringInStr($line, "set _fPath") or StringInStr($line, "set _exe") Then
@@ -533,33 +547,61 @@ Func Load($profile)
 			; increase array rows if required
 			If $count > UBound($aLoadValues, 1) - 1 Then ReDim $aLoadValues[UBound($aLoadValues) + 1][5]
 
-			;$a = StringRegExpReplace($line, '(=.+)$', "")  ; Erase from first "=", to end
-			$b = StringRegExpReplace($line, '(^.+?=)', "") ; Erase from beginning, to first "="
-			$c = StringRegExpReplace($b, '(?i)%~dp0', "") ; Strip %~dp0 from string
-			ConsoleWrite("_fPath: " & $c & @CRLF)
-			$fPath = $c
+			$a = SanitizeString($line)
+			ConsoleWrite("_fPath: " & $a & @CRLF)
+			$fPath = $a
+			$aLoadValues[$count][0] = $fPath
+		EndIf
+		; vbs title splits path and file
+		If StringRegExp($line, "aInstall\(\d,[0]\)", $STR_REGEXPMATCH) Then
+			;ConsoleWrite($line & @CRLF)
+			; increment the counter if on this first section again
+			If $loop = "" Then ; Has not been past this section yet, set loop initial value
+				$loop = "initialised"
+				ConsoleWrite("First Loop " & $count& @CRLF)
+			Else ; increase count by one
+				$count += 1
+				ConsoleWrite("Next Loop " & $count& @CRLF)
+			EndIf
+
+			; increase array rows if required
+			If $count > UBound($aLoadValues, 1) - 1 Then ReDim $aLoadValues[UBound($aLoadValues) + 1][5]
+
+			$a = SanitizeString($line)
+			ConsoleWrite("_fPath: " & $a & @CRLF)
+			$fPath = $a
+			;$aLoadValues[$count][0] = $fPath
+		EndIf
+		If StringRegExp($line, "aInstall\(\d,[1]\)", $STR_REGEXPMATCH) Then
+			$a = SanitizeString($line)
+			If $fPath = "" Then
+				$fPath = $a
+			Else
+				$fPath = $fPath & "\" & $a
+			EndIf
+			ConsoleWrite("_fPath: " & $fPath & @CRLF)
 			$aLoadValues[$count][0] = $fPath
 		EndIf
 
 		;ConsoleWrite($line & @CRLF)
 		;_ArrayDisplay($aLoadValues)
 
-		If StringInStr($line, "set _swtch") Or StringInStr($line, "set _switch") Then
-			$a = StringRegExpReplace($line, '(^.+?=)', "") ; Erase from beginning, to first "="
+		If StringInStr($line, "set _swtch") Or StringInStr($line, "set _switch") Or StringRegExp($line, "aInstall\(\d,[2]\)", $STR_REGEXPMATCH) Then
+			$a = SanitizeString($line)
 			ConsoleWrite("_swtch: " & $a & @CRLF)
 			$swtch = $a
 			$aLoadValues[$count][1] = $swtch
 		EndIf
 
-		If StringInStr($line, "set _regKy") Or StringInStr($line, "set _regK") Then
-			$a = StringRegExpReplace($line, '(^.+?=)', "") ; Erase from beginning, to first "="
+		If StringInStr($line, "set _regKy") Or StringInStr($line, "set _regK") Or StringRegExp($line, "aInstall\(\d,[3]\)", $STR_REGEXPMATCH) Then
+			$a = SanitizeString($line)
 			ConsoleWrite("_regKy: " & $a & @CRLF)
 			$regKy = $a
 			$aLoadValues[$count][2] = $regKy
 		EndIf
 
-		If StringInStr($line, "set _regDN") Then
-			$a = StringRegExpReplace($line, '(^.+?=)', "") ; Erase from beginning, to first "="
+		If StringInStr($line, "set _regDN") Or StringRegExp($line, "aInstall\(\d,[4]\)", $STR_REGEXPMATCH) Then
+			$a = SanitizeString($line)
 			If $a <> "" Then
 				ConsoleWrite("_regDN: " & $a & @CRLF)
 				$regDN = $a
@@ -567,8 +609,8 @@ Func Load($profile)
 			EndIf
 		EndIf
 
-		If StringInStr($line, "set _regDV") Then
-			$a = StringRegExpReplace($line, '(^.+?=)', "") ; Erase from beginning, to first "="
+		If StringInStr($line, "set _regDV") Or StringRegExp($line, "aInstall\(\d,[5]\)", $STR_REGEXPMATCH) Then
+			$a = SanitizeString($line)
 			If $a <> "" Then
 				ConsoleWrite("_regDV: " & $a & @CRLF)
 				$regDV = $a
@@ -578,7 +620,7 @@ Func Load($profile)
 			; NB - could exit loop here if all values loaded - eg look for :: and exitloop
 
 		EndIf
-
+		$prevline = $line ; keep last line in buffer for OSArch comparison
 	Wend
 
 	FileClose($readfile)
@@ -586,6 +628,23 @@ Func Load($profile)
 	subLoadValuesToGUI($aLoadValues)
 
 EndFunc   ;==>Load
+
+
+Func SanitizeString($string)
+	;$a = StringRegExpReplace($string, '(=.+)$', "")  ; Erase from first "=", to end
+	$b = StringRegExpReplace($string, '(^.+?=)', "") ; Erase from beginning, to first "="
+	$c = StringRegExpReplace($b, '(?i)%~dp0', "") ; Strip %~dp0 from string
+	$d = StringRegExpReplace($c, '(?i)strScriptPath & "\" &', "") ; Strip strScriptPath (extra) from string
+	$e = StringRegExpReplace($d, '(?i)strScriptPath', "") ; Strip strScriptPath (single) from string
+
+	$f = StringStripWS($e, $STR_STRIPLEADING + $STR_STRIPTRAILING + $STR_STRIPSPACES) ; remove leading and trailing double spaces
+	$g = StringRegExpReplace($f, '(?m)^"|"(?=[^"]*"$)|"$', ""); remove leading and trailing quote marks
+
+	Local $cleanstring = $g
+	ConsoleWrite("$sleanstring: " & $cleanstring & @CRLF)
+	Return $cleanstring
+EndFunc   ;==>SanitizeString
+
 
 Func subLoadValuesToGUI($aLoadValues)
 	; Reads array and enters values into matching boxes
