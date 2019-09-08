@@ -7,4 +7,4 @@ SilentBatchMaker allows you to install an exe or msi file, detects registry chan
 
 Save/Load functionality
 
-See http://www.sherratt.ml/sbm for more info
+See https://www.sherratt.tk/tools/silentbatchmaker/ for more info
